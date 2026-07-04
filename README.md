@@ -183,6 +183,7 @@ Configured camera:
 
 ```text
 Device Name: solar port camera
+App/Maker: FONDAIL
 SN: ppsl55553f7150d4429b
 Location: electrifygarage's home
 Network: shop
@@ -205,7 +206,7 @@ Local probe result from the Mac:
 
 Current conclusion:
 
-This looks like a battery/solar app-first camera. It may not expose a normal local RTSP/ONVIF/browser stream unless the vendor app has a setting for local/NVR/RTSP/ONVIF access.
+This looks like a FONDAIL battery/solar app-first camera. It may not expose a normal local RTSP/ONVIF/browser stream unless the FONDAIL app has a setting for local/NVR/RTSP/ONVIF access.
 
 To get it into Enrique, use one of these paths:
 
