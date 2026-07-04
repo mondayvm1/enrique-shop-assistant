@@ -591,6 +591,16 @@
       display: block;
     }
 
+    .thumb {
+      width: 72px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: #f8fafb;
+      display: block;
+    }
+
     .capture-grid {
       display: grid;
       grid-template-columns: 1fr 1.2fr;
@@ -1318,6 +1328,18 @@ Customer approval required before additional work</div>
             </table>
           </div>
         </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2>Inventory Photos / Catalog Captures</h2>
+          <table>
+            <thead>
+              <tr><th>Photo</th><th>Item</th><th>Category</th><th>Location</th><th>Qty</th></tr>
+            </thead>
+            <tbody id="inventoryPhotoBody">
+              <tr><td colspan="5">No inventory photos yet. Upload or capture a photo from Phone Camera or Live Stream.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section id="vision" class="section">
@@ -1475,6 +1497,7 @@ Customer approval required before additional work</div>
             <h2>Phone Camera Intake</h2>
             <p class="muted">Open this dashboard on your phone, take a photo, then log what it is, how many, who it belongs to, and how long it has been at the shop.</p>
             <input id="photoEditIndex" type="hidden" value="">
+            <input id="saveToInventory" type="hidden" value="yes">
             <div style="margin-top:12px">
               <label for="shopPhoto">Take Photo / Upload</label>
               <input id="shopPhoto" type="file" accept="image/*" capture="environment">
@@ -1979,7 +2002,8 @@ Customer approval required before additional work</div>
         belongsTo: document.getElementById("belongsTo").value.trim(),
         checkInDate: document.getElementById("checkInDate").value,
         location: document.getElementById("storageLocation").value.trim(),
-        notes: document.getElementById("itemNotes").value.trim()
+        notes: document.getElementById("itemNotes").value.trim(),
+        inventory: document.getElementById("saveToInventory").value === "yes"
       };
     }
 
@@ -2063,6 +2087,26 @@ Customer approval required before additional work</div>
       }).join("");
     }
 
+    function renderInventoryPhotos() {
+      const body = document.getElementById("inventoryPhotoBody");
+      if (!body) return;
+      const logs = loadPhotoLogs().filter((log) => log.inventory !== false);
+      if (!logs.length) {
+        body.innerHTML = '<tr><td colspan="5">No inventory photos yet. Upload or capture a photo from Phone Camera or Live Stream.</td></tr>';
+        return;
+      }
+      body.innerHTML = logs.slice().reverse().map((log) => {
+        const img = log.photo ? `<img class="thumb" src="${log.photo}" alt="${escapeHtml(log.item || "Inventory photo")}">` : '<span class="muted">No photo</span>';
+        return `<tr>
+          <td>${img}</td>
+          <td>${escapeHtml(log.item || "Unnamed item")}<br><span class="muted">${escapeHtml(log.belongsTo || "Unassigned")}</span></td>
+          <td>${escapeHtml(log.category || "Unsorted")}</td>
+          <td>${escapeHtml(log.location || "")}</td>
+          <td>${escapeHtml(log.count || 1)}</td>
+        </tr>`;
+      }).join("");
+    }
+
     function savePhotoLog() {
       const logs = loadPhotoLogs();
       const editIndex = document.getElementById("photoEditIndex").value;
@@ -2076,6 +2120,7 @@ Customer approval required before additional work</div>
       }
       localStorage.setItem(photoLogKey, JSON.stringify(logs));
       renderPhotoLogs();
+      renderInventoryPhotos();
       analyzePhotoDraft();
       setText("photoStatus", "Saved to the local shop photo log.");
     }
@@ -2099,6 +2144,7 @@ Customer approval required before additional work</div>
       document.getElementById("checkInDate").value = log.checkInDate || todayInputValue();
       document.getElementById("storageLocation").value = log.location || "";
       document.getElementById("itemNotes").value = log.notes || "";
+      document.getElementById("saveToInventory").value = log.inventory === false ? "no" : "yes";
       document.getElementById("savePhotoLog").textContent = "Update Entry";
       analyzePhotoDraft();
       setText("photoStatus", "Editing saved entry. Change anything, then update it.");
@@ -2109,6 +2155,7 @@ Customer approval required before additional work</div>
       logs.splice(index, 1);
       localStorage.setItem(photoLogKey, JSON.stringify(logs));
       renderPhotoLogs();
+      renderInventoryPhotos();
       setText("photoStatus", "Entry deleted from the local shop photo log.");
     }
 
@@ -2219,6 +2266,7 @@ Customer approval required before additional work</div>
       document.getElementById("checkInDate").value = todayInputValue();
       document.getElementById("storageLocation").value = sourceLabel;
       document.getElementById("itemNotes").value = `Captured from ${sourceLabel} at ${new Date().toLocaleString()}. Review item/category/count/customer before relying on it.`;
+      document.getElementById("saveToInventory").value = "yes";
       analyzePhotoDraft();
       savePhotoLog();
       showSection("capture");
@@ -2739,6 +2787,7 @@ Customer approval required before additional work</div>
     document.getElementById("clearPhotoLog").addEventListener("click", () => {
       localStorage.removeItem(photoLogKey);
       renderPhotoLogs();
+      renderInventoryPhotos();
       setText("photoStatus", "Photo log cleared in this browser.");
     });
 
@@ -2804,6 +2853,7 @@ Customer approval required before additional work</div>
     renderInvoiceRecords();
     analyzePhotoDraft();
     renderPhotoLogs();
+    renderInventoryPhotos();
   </script>
 </body>
 </html>
