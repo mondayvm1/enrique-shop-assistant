@@ -1358,11 +1358,18 @@ Customer approval required before additional work</div>
                 <input id="roomStatusField" value="Not connected" readonly>
               </div>
             </div>
+            <div style="margin-top:12px">
+              <label for="viewerRoomLink">Mac Viewer Link</label>
+              <textarea id="viewerRoomLink" placeholder="Create a room link, then send this to the Mac."></textarea>
+            </div>
             <div class="actions">
+              <button class="primary" id="createRoomLink">Phone: Create Room Link</button>
               <button class="primary" id="startRoomBroadcast">Phone: Start Room Broadcast</button>
               <button id="joinRoomBroadcast">Mac: Join Room</button>
               <button id="copyRoomId">Copy Room ID</button>
               <button id="shareRoomId">Share Room ID</button>
+              <button id="copyRoomLink">Copy Mac Link</button>
+              <button id="shareRoomLink">Share Mac Link</button>
             </div>
             <div class="actions">
               <button class="primary" id="createPhoneOffer">Phone: Create Stream Offer</button>
@@ -1585,7 +1592,7 @@ Customer approval required before additional work</div>
     </main>
   </div>
 
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';"></script>
   <script>
     const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
     const draftKey = "enriqueInvoiceDraft";
@@ -2194,6 +2201,29 @@ Customer approval required before additional work</div>
       return `enrique-${Math.random().toString(36).slice(2, 8)}`;
     }
 
+    function appBaseUrl() {
+      return `${location.origin}${location.pathname}`;
+    }
+
+    function createRoomLink() {
+      const roomId = document.getElementById("streamRoomId").value.trim() || makeRoomId();
+      const link = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+      document.getElementById("streamRoomId").value = roomId;
+      document.getElementById("viewerRoomLink").value = link;
+      setRoomStatus(`Room link ready. Send it to the Mac, then tap Phone: Start Room Broadcast.`);
+      return { roomId, link };
+    }
+
+    function initRoomFromUrl() {
+      const params = new URLSearchParams(location.search);
+      const roomId = params.get("room");
+      if (!roomId) return;
+      document.getElementById("streamRoomId").value = roomId;
+      document.getElementById("viewerRoomLink").value = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+      showSection("stream");
+      setRoomStatus("Room ID loaded from link. On the Mac, tap Mac: Join Room.");
+    }
+
     function stopRoomPeer() {
       if (roomCall) {
         roomCall.close();
@@ -2206,8 +2236,10 @@ Customer approval required before additional work</div>
     }
 
     async function startRoomBroadcast() {
+      const existing = document.getElementById("streamRoomId").value.trim();
+      if (!existing) createRoomLink();
       if (!window.Peer) {
-        setRoomStatus("Room streaming library did not load. Refresh the page and try again.");
+        setRoomStatus("Room link exists, but streaming library did not load. Refresh the page and try again.");
         return;
       }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -2216,8 +2248,9 @@ Customer approval required before additional work</div>
       }
       try {
         stopRoomPeer();
-        const roomId = makeRoomId();
+        const roomId = document.getElementById("streamRoomId").value.trim() || makeRoomId();
         document.getElementById("streamRoomId").value = roomId;
+        document.getElementById("viewerRoomLink").value = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
         setRoomStatus("Requesting phone camera...");
         streamTabMedia = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } },
@@ -2455,10 +2488,13 @@ Customer approval required before additional work</div>
     document.getElementById("createMacAnswer").addEventListener("click", createMacAnswer);
     document.getElementById("connectPhoneAnswer").addEventListener("click", connectPhoneAnswer);
     document.getElementById("stopBroadcast").addEventListener("click", stopBroadcast);
+    document.getElementById("createRoomLink").addEventListener("click", createRoomLink);
     document.getElementById("startRoomBroadcast").addEventListener("click", startRoomBroadcast);
     document.getElementById("joinRoomBroadcast").addEventListener("click", joinRoomBroadcast);
     document.getElementById("copyRoomId").addEventListener("click", () => copyFieldValue("streamRoomId", "Room ID"));
     document.getElementById("shareRoomId").addEventListener("click", () => shareFieldValue("streamRoomId", "Room ID"));
+    document.getElementById("copyRoomLink").addEventListener("click", () => copyFieldValue("viewerRoomLink", "Mac Viewer Link"));
+    document.getElementById("shareRoomLink").addEventListener("click", () => shareFieldValue("viewerRoomLink", "Mac Viewer Link"));
     document.getElementById("copyOfferCode").addEventListener("click", () => copyFieldValue("webrtcOffer", "Offer Code"));
     document.getElementById("shareOfferCode").addEventListener("click", () => shareFieldValue("webrtcOffer", "Offer Code"));
     document.getElementById("copyAnswerCode").addEventListener("click", () => copyFieldValue("webrtcAnswer", "Answer Code"));
@@ -2482,6 +2518,7 @@ Customer approval required before additional work</div>
     });
 
     initPhoneAccessUrl();
+    initRoomFromUrl();
     document.getElementById("billingEntityName").value = document.getElementById("billingEntity").selectedOptions[0].textContent;
     document.getElementById("checkInDate").value = todayInputValue();
     updateInvoice();
