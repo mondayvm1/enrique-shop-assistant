@@ -1370,7 +1370,9 @@ Customer approval required before additional work</div>
               <button id="shareRoomId">Share Room ID</button>
               <button id="copyRoomLink">Copy Mac Link</button>
               <button id="shareRoomLink">Share Mac Link</button>
+              <button id="resetRoomId">Reset Room ID</button>
             </div>
+            <div class="callout" id="roomDiagnostics" style="margin-top:12px">Room diagnostics loading...</div>
             <div class="actions">
               <button class="primary" id="createPhoneOffer">Phone: Create Stream Offer</button>
               <button id="createMacAnswer">Mac: Create Viewer Answer</button>
@@ -1598,6 +1600,7 @@ Customer approval required before additional work</div>
     const draftKey = "enriqueInvoiceDraft";
     const cameraConfigKey = "enriqueCameraConfig";
     const photoLogKey = "enriquePhotoLog";
+    const roomIdKey = "enriqueStableRoomId";
     let currentLogoData = "";
     let currentShopPhotoData = "";
     let liveCameraStream = null;
@@ -2198,30 +2201,65 @@ Customer approval required before additional work</div>
     }
 
     function makeRoomId() {
-      return `enrique-${Math.random().toString(36).slice(2, 8)}`;
+      return `enrique-shop-${Math.random().toString(36).slice(2, 8)}`;
     }
 
     function appBaseUrl() {
       return `${location.origin}${location.pathname}`;
     }
 
-    function createRoomLink() {
-      const roomId = document.getElementById("streamRoomId").value.trim() || makeRoomId();
-      const link = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+    function savedRoomId() {
+      const existing = localStorage.getItem(roomIdKey);
+      if (existing) return existing;
+      const created = makeRoomId();
+      localStorage.setItem(roomIdKey, created);
+      return created;
+    }
+
+    function setRoomId(roomId) {
+      localStorage.setItem(roomIdKey, roomId);
       document.getElementById("streamRoomId").value = roomId;
+      document.getElementById("viewerRoomLink").value = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+    }
+
+    function createRoomLink(forceNew = false) {
+      const roomId = forceNew ? makeRoomId() : (document.getElementById("streamRoomId").value.trim() || savedRoomId());
+      const link = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+      setRoomId(roomId);
       document.getElementById("viewerRoomLink").value = link;
       setRoomStatus(`Room link ready. Send it to the Mac, then tap Phone: Start Room Broadcast.`);
+      updateRoomDiagnostics();
       return { roomId, link };
     }
 
     function initRoomFromUrl() {
       const params = new URLSearchParams(location.search);
       const roomId = params.get("room");
-      if (!roomId) return;
-      document.getElementById("streamRoomId").value = roomId;
-      document.getElementById("viewerRoomLink").value = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
-      showSection("stream");
-      setRoomStatus("Room ID loaded from link. On the Mac, tap Mac: Join Room.");
+      if (roomId) {
+        setRoomId(roomId);
+        showSection("stream");
+        setRoomStatus("Room ID loaded from link. On the Mac, tap Mac: Join Room.");
+      } else {
+        setRoomId(savedRoomId());
+      }
+      updateRoomDiagnostics();
+    }
+
+    function resetRoomId() {
+      createRoomLink(true);
+      setRoomStatus("New Room ID created. Share the new Mac Viewer Link.");
+    }
+
+    function updateRoomDiagnostics() {
+      const secure = window.isSecureContext ? "yes" : "no";
+      const camera = navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? "yes" : "no";
+      const peer = window.Peer ? "yes" : "loading/no";
+      const room = document.getElementById("streamRoomId").value || "none";
+      const page = location.href.startsWith("file:") ? "file version - use hosted link" : "web link";
+      const diagnostics = document.getElementById("roomDiagnostics");
+      if (diagnostics) {
+        diagnostics.textContent = `Room: ${room} | Secure: ${secure} | Camera API: ${camera} | Peer library: ${peer} | Page: ${page}`;
+      }
     }
 
     function stopRoomPeer() {
@@ -2238,6 +2276,7 @@ Customer approval required before additional work</div>
     async function startRoomBroadcast() {
       const existing = document.getElementById("streamRoomId").value.trim();
       if (!existing) createRoomLink();
+      updateRoomDiagnostics();
       if (!window.Peer) {
         setRoomStatus("Room link exists, but streaming library did not load. Refresh the page and try again.");
         return;
@@ -2248,9 +2287,8 @@ Customer approval required before additional work</div>
       }
       try {
         stopRoomPeer();
-        const roomId = document.getElementById("streamRoomId").value.trim() || makeRoomId();
-        document.getElementById("streamRoomId").value = roomId;
-        document.getElementById("viewerRoomLink").value = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+        const roomId = document.getElementById("streamRoomId").value.trim() || savedRoomId();
+        setRoomId(roomId);
         setRoomStatus("Requesting phone camera...");
         streamTabMedia = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } },
@@ -2266,13 +2304,16 @@ Customer approval required before additional work</div>
         });
         roomPeer.on("error", (error) => {
           setRoomStatus(`Room error: ${error.type || error.message || "connection failed"}`);
+          updateRoomDiagnostics();
         });
       } catch (error) {
         setRoomStatus(`${error && error.name ? error.name : "Camera blocked"}: allow camera permission, then try again.`);
+        updateRoomDiagnostics();
       }
     }
 
     function joinRoomBroadcast() {
+      updateRoomDiagnostics();
       if (!window.Peer) {
         setRoomStatus("Room streaming library did not load. Refresh the page and try again.");
         return;
@@ -2295,6 +2336,7 @@ Customer approval required before additional work</div>
       });
       roomPeer.on("error", (error) => {
         setRoomStatus(`Room error: ${error.type || error.message || "connection failed"}`);
+        updateRoomDiagnostics();
       });
     }
 
@@ -2495,6 +2537,7 @@ Customer approval required before additional work</div>
     document.getElementById("shareRoomId").addEventListener("click", () => shareFieldValue("streamRoomId", "Room ID"));
     document.getElementById("copyRoomLink").addEventListener("click", () => copyFieldValue("viewerRoomLink", "Mac Viewer Link"));
     document.getElementById("shareRoomLink").addEventListener("click", () => shareFieldValue("viewerRoomLink", "Mac Viewer Link"));
+    document.getElementById("resetRoomId").addEventListener("click", resetRoomId);
     document.getElementById("copyOfferCode").addEventListener("click", () => copyFieldValue("webrtcOffer", "Offer Code"));
     document.getElementById("shareOfferCode").addEventListener("click", () => shareFieldValue("webrtcOffer", "Offer Code"));
     document.getElementById("copyAnswerCode").addEventListener("click", () => copyFieldValue("webrtcAnswer", "Answer Code"));
@@ -2519,6 +2562,7 @@ Customer approval required before additional work</div>
 
     initPhoneAccessUrl();
     initRoomFromUrl();
+    setTimeout(updateRoomDiagnostics, 1200);
     document.getElementById("billingEntityName").value = document.getElementById("billingEntity").selectedOptions[0].textContent;
     document.getElementById("checkInDate").value = todayInputValue();
     updateInvoice();
