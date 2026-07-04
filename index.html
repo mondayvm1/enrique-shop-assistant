@@ -1357,10 +1357,18 @@ Customer approval required before additional work</div>
             <div style="margin-top:12px">
               <label for="webrtcOffer">Offer Code</label>
               <textarea id="webrtcOffer" placeholder="Phone creates this. Copy it to the Mac."></textarea>
+              <div class="actions">
+                <button id="copyOfferCode">Copy Offer</button>
+                <button id="shareOfferCode">Share Offer</button>
+              </div>
             </div>
             <div style="margin-top:12px">
               <label for="webrtcAnswer">Answer Code</label>
               <textarea id="webrtcAnswer" placeholder="Mac creates this. Copy it back to the phone."></textarea>
+              <div class="actions">
+                <button id="copyAnswerCode">Copy Answer</button>
+                <button id="shareAnswerCode">Share Answer</button>
+              </div>
             </div>
             <div class="draft-status" id="broadcastStatus">This is manual WebRTC pairing. A later backend can make this one-click.</div>
           </div>
@@ -2157,6 +2165,45 @@ Customer approval required before additional work</div>
       setText("broadcastStatus", "Broadcast stopped.");
     }
 
+    async function copyFieldValue(fieldId, label) {
+      const field = document.getElementById(fieldId);
+      const text = field.value.trim();
+      if (!text) {
+        setText("broadcastStatus", `${label} is empty. Create or paste a code first.`);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        setText("broadcastStatus", `${label} copied.`);
+      } catch {
+        field.focus();
+        field.select();
+        setText("broadcastStatus", `Select and copy the ${label} manually.`);
+      }
+    }
+
+    async function shareFieldValue(fieldId, label) {
+      const field = document.getElementById(fieldId);
+      const text = field.value.trim();
+      if (!text) {
+        setText("broadcastStatus", `${label} is empty. Create or paste a code first.`);
+        return;
+      }
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `Enrique ${label}`,
+            text
+          });
+          setText("broadcastStatus", `${label} shared.`);
+          return;
+        } catch {
+          setText("broadcastStatus", `${label} share cancelled or blocked.`);
+        }
+      }
+      await copyFieldValue(fieldId, label);
+    }
+
     function draftMessage() {
       const customer = document.getElementById("customerName").value.trim() || "there";
       const vehicle = document.getElementById("vehicleName").value.trim() || "your vehicle";
@@ -2308,6 +2355,10 @@ Customer approval required before additional work</div>
     document.getElementById("createMacAnswer").addEventListener("click", createMacAnswer);
     document.getElementById("connectPhoneAnswer").addEventListener("click", connectPhoneAnswer);
     document.getElementById("stopBroadcast").addEventListener("click", stopBroadcast);
+    document.getElementById("copyOfferCode").addEventListener("click", () => copyFieldValue("webrtcOffer", "Offer Code"));
+    document.getElementById("shareOfferCode").addEventListener("click", () => shareFieldValue("webrtcOffer", "Offer Code"));
+    document.getElementById("copyAnswerCode").addEventListener("click", () => copyFieldValue("webrtcAnswer", "Answer Code"));
+    document.getElementById("shareAnswerCode").addEventListener("click", () => shareFieldValue("webrtcAnswer", "Answer Code"));
     document.getElementById("saveStreamUrl").addEventListener("click", () => {
       document.getElementById("cameraUrl").value = document.getElementById("streamUrl").value;
       localStorage.setItem(cameraConfigKey, JSON.stringify(cameraConfigData()));
