@@ -787,6 +787,7 @@
         <button class="nav-btn" data-section="inventory">Inventory</button>
         <button class="nav-btn" data-section="vision">Vision & Cameras</button>
         <button class="nav-btn" data-section="capture">Phone Camera</button>
+        <button class="nav-btn" data-section="stream">Live Stream</button>
         <button class="nav-btn" data-section="content">Video Content</button>
         <button class="nav-btn" data-section="roadmap">Build Roadmap</button>
       </nav>
@@ -1304,6 +1305,52 @@ Customer approval required before additional work</div>
         </div>
       </section>
 
+      <section id="stream" class="section">
+        <div class="grid cols-2">
+          <div class="card">
+            <h2>Live Device Camera</h2>
+            <p class="muted">Open the hosted app on your phone, then use this panel to turn that phone into a live shop camera. On the Mac, this uses the Mac camera.</p>
+            <video id="liveCameraStreamTab" class="live-video" autoplay playsinline muted></video>
+            <canvas id="streamSnapshotCanvas" style="display:none"></canvas>
+            <div class="actions">
+              <button class="primary" id="startStreamTab">Start Live Camera</button>
+              <button id="snapshotStreamTab">Use Snapshot For Enrique</button>
+              <button id="stopStreamTab">Stop</button>
+            </div>
+            <div class="draft-status" id="streamStatus">For phone camera access, use the HTTPS GitHub link on the phone: https://mondayvm1.github.io/enrique-shop-assistant/</div>
+          </div>
+
+          <div class="card">
+            <h2>Security Camera Stream</h2>
+            <p class="muted">Paste a browser-friendly camera URL here. RTSP security cameras need a backend bridge before the browser can show them.</p>
+            <div>
+              <label for="streamUrl">Stream URL</label>
+              <textarea id="streamUrl" placeholder="Example browser-friendly URL: https://camera-page-or-mjpeg-stream"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="previewStreamTab">Preview Stream</button>
+              <button id="saveStreamUrl">Save Stream URL</button>
+            </div>
+            <iframe id="streamTabFrame" class="stream-frame" title="Live stream preview" style="margin-top:12px" srcdoc="<body style='margin:0;background:#11191c;color:white;font-family:sans-serif;display:grid;place-items:center;height:100vh;text-align:center;padding:20px'>Paste a stream URL, then click Preview Stream</body>"></iframe>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2>What Works Where</h2>
+          <table>
+            <thead>
+              <tr><th>Camera Type</th><th>Where It Shows</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Phone camera</td><td>Live Device Camera</td><td>Open the HTTPS hosted app on the phone and tap Start Live Camera.</td></tr>
+              <tr><td>Mac webcam</td><td>Live Device Camera</td><td>Works from the local or hosted app on the Mac.</td></tr>
+              <tr><td>MJPEG/HLS/web camera page</td><td>Security Camera Stream</td><td>Paste the browser-friendly URL and preview it.</td></tr>
+              <tr><td>RTSP/ONVIF security camera</td><td>Needs backend bridge</td><td>RTSP cannot go straight into a normal browser page.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="capture" class="section">
         <div class="capture-grid">
           <div class="card">
@@ -1475,6 +1522,7 @@ Customer approval required before additional work</div>
     let currentLogoData = "";
     let currentShopPhotoData = "";
     let liveCameraStream = null;
+    let streamTabMedia = null;
 
     function showSection(id) {
       document.querySelectorAll(".section").forEach((section) => {
@@ -1885,6 +1933,65 @@ Customer approval required before additional work</div>
       setText("photoStatus", "Snapshot captured. Review the label, count, owner, and save it.");
     }
 
+    async function startStreamTabCamera() {
+      const video = document.getElementById("liveCameraStreamTab");
+      try {
+        streamTabMedia = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        video.srcObject = streamTabMedia;
+        setText("streamStatus", "Live camera is running. Use Snapshot For Enrique to send a frame into the photo intake.");
+      } catch {
+        setText("streamStatus", "Camera was blocked. Open the HTTPS hosted app on the phone, or allow camera permission in the browser.");
+      }
+    }
+
+    function stopStreamTabCamera() {
+      if (streamTabMedia) {
+        streamTabMedia.getTracks().forEach((track) => track.stop());
+        streamTabMedia = null;
+      }
+      document.getElementById("liveCameraStreamTab").srcObject = null;
+      setText("streamStatus", "Live camera stopped.");
+    }
+
+    function snapshotStreamTabCamera() {
+      const video = document.getElementById("liveCameraStreamTab");
+      const canvas = document.getElementById("streamSnapshotCanvas");
+      if (!video.videoWidth || !video.videoHeight) {
+        setText("streamStatus", "Start the live camera before taking a snapshot.");
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      currentShopPhotoData = canvas.toDataURL("image/jpeg", 0.9);
+      document.getElementById("shopPhotoPreview").innerHTML = `<img src="${currentShopPhotoData}" alt="Live stream snapshot">`;
+      showSection("capture");
+      autoLabelPhoto();
+      setText("photoStatus", "Snapshot pulled from Live Stream. Review and save it.");
+    }
+
+    function previewStreamTab() {
+      const input = document.getElementById("streamUrl");
+      const url = input.value.trim();
+      const frame = document.getElementById("streamTabFrame");
+      if (!url) {
+        setText("streamStatus", "Paste a stream URL first.");
+        return;
+      }
+      if (url.startsWith("rtsp://")) {
+        setText("streamStatus", "RTSP needs a backend bridge. It cannot display directly inside this browser tab.");
+        frame.srcdoc = "<body style='margin:0;background:#11191c;color:white;font-family:sans-serif;display:grid;place-items:center;height:100vh;text-align:center;padding:20px'>RTSP needs a backend bridge before it can show here.</body>";
+        frame.removeAttribute("src");
+        return;
+      }
+      frame.removeAttribute("srcdoc");
+      frame.src = url;
+      setText("streamStatus", "Trying to preview stream. If it is blank, the camera may block embedding.");
+    }
+
     function draftMessage() {
       const customer = document.getElementById("customerName").value.trim() || "there";
       const vehicle = document.getElementById("vehicleName").value.trim() || "your vehicle";
@@ -2027,6 +2134,15 @@ Customer approval required before additional work</div>
     document.getElementById("startCamera").addEventListener("click", startLiveCamera);
     document.getElementById("snapshotCamera").addEventListener("click", snapshotLiveCamera);
     document.getElementById("stopCamera").addEventListener("click", stopLiveCamera);
+    document.getElementById("startStreamTab").addEventListener("click", startStreamTabCamera);
+    document.getElementById("snapshotStreamTab").addEventListener("click", snapshotStreamTabCamera);
+    document.getElementById("stopStreamTab").addEventListener("click", stopStreamTabCamera);
+    document.getElementById("previewStreamTab").addEventListener("click", previewStreamTab);
+    document.getElementById("saveStreamUrl").addEventListener("click", () => {
+      document.getElementById("cameraUrl").value = document.getElementById("streamUrl").value;
+      localStorage.setItem(cameraConfigKey, JSON.stringify(cameraConfigData()));
+      setText("streamStatus", "Stream URL saved to Camera Sources.");
+    });
 
     document.getElementById("draftMessage").addEventListener("click", draftMessage);
     document.getElementById("copyMessage").addEventListener("click", async () => {
