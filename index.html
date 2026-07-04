@@ -626,6 +626,14 @@
       display: block;
     }
 
+    .stream-frame {
+      width: 100%;
+      min-height: 280px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #11191c;
+    }
+
     .table-actions {
       display: flex;
       flex-wrap: wrap;
@@ -1168,6 +1176,8 @@ Customer approval required before additional work</div>
               </div>
             </div>
             <div class="insight-list">
+              <div class="insight"><strong>Actual hosted link</strong><span><a href="https://mondayvm1.github.io/enrique-shop-assistant/" target="_blank" rel="noreferrer">https://mondayvm1.github.io/enrique-shop-assistant/</a></span></div>
+              <div class="insight"><strong>Actual local link</strong><span><a href="http://192.168.1.248:8026/enrique_shop_model.html" target="_blank" rel="noreferrer">http://192.168.1.248:8026/enrique_shop_model.html</a></span></div>
               <div class="insight"><strong>Best current path</strong><span>Open the link on your phone, go to Phone Camera, then use Take Photo / Upload.</span></div>
               <div class="insight"><strong>Why file:// fails</strong><span>A file opened on the Mac is not reachable by your phone. The phone needs HTTP, HTTPS, or a hosted URL.</span></div>
               <div class="insight"><strong>For a link like the other app</strong><span>Deploy this as a web app or use a secure tunnel so your phone gets a normal shareable URL.</span></div>
@@ -1198,8 +1208,10 @@ Customer approval required before additional work</div>
             <div class="actions">
               <button class="primary" id="saveCameraConfig">Save Camera Setup</button>
               <button id="loadCameraConfig">Load</button>
+              <button class="teal" id="previewStream">Preview Stream</button>
             </div>
             <div class="draft-status" id="cameraStatus">Security cameras usually cannot be read directly by a plain browser page. Enrique needs a small backend to capture frames from RTSP/ONVIF and send snapshots to vision.</div>
+            <iframe id="streamFrame" class="stream-frame" title="Camera stream preview" style="margin-top:12px" srcdoc="<body style='margin:0;background:#11191c;color:white;font-family:sans-serif;display:grid;place-items:center;height:100vh'>Paste a browser-friendly stream URL, then Preview Stream</body>"></iframe>
           </div>
         </div>
 
@@ -1628,6 +1640,24 @@ Customer approval required before additional work</div>
       document.getElementById("cameraUrl").value = data.url || "";
     }
 
+    function previewCameraStream() {
+      const url = document.getElementById("cameraUrl").value.trim();
+      const frame = document.getElementById("streamFrame");
+      if (!url) {
+        setText("cameraStatus", "Paste a camera stream URL first.");
+        return;
+      }
+      if (url.startsWith("rtsp://")) {
+        setText("cameraStatus", "RTSP cannot be embedded directly in a browser. Use a backend bridge to convert it to HLS, MJPEG, WebRTC, or snapshots.");
+        frame.srcdoc = "<body style='margin:0;background:#11191c;color:white;font-family:sans-serif;display:grid;place-items:center;height:100vh;text-align:center;padding:20px'>RTSP needs a backend bridge before it can show here.</body>";
+        frame.removeAttribute("src");
+        return;
+      }
+      frame.removeAttribute("srcdoc");
+      frame.src = url;
+      setText("cameraStatus", "Trying to preview the stream. If it stays blank, the camera may block embedding or require a backend bridge.");
+    }
+
     function initPhoneAccessUrl() {
       const element = document.getElementById("phoneAccessUrl");
       if (!element) return;
@@ -1958,6 +1988,7 @@ Customer approval required before additional work</div>
       applyCameraConfig(JSON.parse(raw));
       setText("cameraStatus", "Camera setup loaded.");
     });
+    document.getElementById("previewStream").addEventListener("click", previewCameraStream);
 
     document.getElementById("shopPhoto").addEventListener("change", (event) => {
       const file = event.target.files && event.target.files[0];
