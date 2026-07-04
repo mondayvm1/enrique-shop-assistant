@@ -1346,8 +1346,24 @@ Customer approval required before additional work</div>
 
           <div class="card">
             <h2>Broadcast To Mac</h2>
-            <p class="muted">Use this when the phone camera needs to show up on the Mac. Phone creates an offer, Mac creates an answer, then the Mac sees the stream.</p>
+            <p class="muted">Use this when the phone camera needs to show up on the Mac. The easiest path is Room ID streaming.</p>
             <video id="remoteStreamVideo" class="live-video" autoplay playsinline muted></video>
+            <div class="form-grid" style="margin-top:12px">
+              <div>
+                <label for="streamRoomId">Room ID</label>
+                <input id="streamRoomId" placeholder="Phone creates this, Mac joins it">
+              </div>
+              <div>
+                <label>Status</label>
+                <input id="roomStatusField" value="Not connected" readonly>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" id="startRoomBroadcast">Phone: Start Room Broadcast</button>
+              <button id="joinRoomBroadcast">Mac: Join Room</button>
+              <button id="copyRoomId">Copy Room ID</button>
+              <button id="shareRoomId">Share Room ID</button>
+            </div>
             <div class="actions">
               <button class="primary" id="createPhoneOffer">Phone: Create Stream Offer</button>
               <button id="createMacAnswer">Mac: Create Viewer Answer</button>
@@ -1569,6 +1585,7 @@ Customer approval required before additional work</div>
     </main>
   </div>
 
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
     const draftKey = "enriqueInvoiceDraft";
@@ -1579,6 +1596,8 @@ Customer approval required before additional work</div>
     let liveCameraStream = null;
     let streamTabMedia = null;
     let broadcastPeer = null;
+    let roomPeer = null;
+    let roomCall = null;
     const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
     function showSection(id) {
@@ -2165,6 +2184,87 @@ Customer approval required before additional work</div>
       setText("broadcastStatus", "Broadcast stopped.");
     }
 
+    function setRoomStatus(message) {
+      setText("broadcastStatus", message);
+      const field = document.getElementById("roomStatusField");
+      if (field) field.value = message;
+    }
+
+    function makeRoomId() {
+      return `enrique-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function stopRoomPeer() {
+      if (roomCall) {
+        roomCall.close();
+        roomCall = null;
+      }
+      if (roomPeer) {
+        roomPeer.destroy();
+        roomPeer = null;
+      }
+    }
+
+    async function startRoomBroadcast() {
+      if (!window.Peer) {
+        setRoomStatus("Room streaming library did not load. Refresh the page and try again.");
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setRoomStatus("Camera API unavailable. Open the HTTPS site in Safari/Chrome.");
+        return;
+      }
+      try {
+        stopRoomPeer();
+        const roomId = makeRoomId();
+        document.getElementById("streamRoomId").value = roomId;
+        setRoomStatus("Requesting phone camera...");
+        streamTabMedia = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        document.getElementById("liveCameraStreamTab").srcObject = streamTabMedia;
+        roomPeer = new Peer(roomId, { debug: 1 });
+        roomPeer.on("open", () => setRoomStatus(`Phone broadcasting. Share Room ID: ${roomId}`));
+        roomPeer.on("call", (call) => {
+          roomCall = call;
+          call.answer(streamTabMedia);
+          setRoomStatus("Mac joined. Streaming phone camera now.");
+        });
+        roomPeer.on("error", (error) => {
+          setRoomStatus(`Room error: ${error.type || error.message || "connection failed"}`);
+        });
+      } catch (error) {
+        setRoomStatus(`${error && error.name ? error.name : "Camera blocked"}: allow camera permission, then try again.`);
+      }
+    }
+
+    function joinRoomBroadcast() {
+      if (!window.Peer) {
+        setRoomStatus("Room streaming library did not load. Refresh the page and try again.");
+        return;
+      }
+      const roomId = document.getElementById("streamRoomId").value.trim();
+      if (!roomId) {
+        setRoomStatus("Paste the phone Room ID first.");
+        return;
+      }
+      stopRoomPeer();
+      setRoomStatus("Mac connecting to phone room...");
+      roomPeer = new Peer(undefined, { debug: 1 });
+      roomPeer.on("open", () => {
+        roomCall = roomPeer.call(roomId, new MediaStream());
+        roomCall.on("stream", (remoteStream) => {
+          document.getElementById("remoteStreamVideo").srcObject = remoteStream;
+          setRoomStatus("Connected. Mac is viewing the phone camera.");
+        });
+        roomCall.on("close", () => setRoomStatus("Room call closed."));
+      });
+      roomPeer.on("error", (error) => {
+        setRoomStatus(`Room error: ${error.type || error.message || "connection failed"}`);
+      });
+    }
+
     async function copyFieldValue(fieldId, label) {
       const field = document.getElementById(fieldId);
       const text = field.value.trim();
@@ -2355,6 +2455,10 @@ Customer approval required before additional work</div>
     document.getElementById("createMacAnswer").addEventListener("click", createMacAnswer);
     document.getElementById("connectPhoneAnswer").addEventListener("click", connectPhoneAnswer);
     document.getElementById("stopBroadcast").addEventListener("click", stopBroadcast);
+    document.getElementById("startRoomBroadcast").addEventListener("click", startRoomBroadcast);
+    document.getElementById("joinRoomBroadcast").addEventListener("click", joinRoomBroadcast);
+    document.getElementById("copyRoomId").addEventListener("click", () => copyFieldValue("streamRoomId", "Room ID"));
+    document.getElementById("shareRoomId").addEventListener("click", () => shareFieldValue("streamRoomId", "Room ID"));
     document.getElementById("copyOfferCode").addEventListener("click", () => copyFieldValue("webrtcOffer", "Offer Code"));
     document.getElementById("shareOfferCode").addEventListener("click", () => shareFieldValue("webrtcOffer", "Offer Code"));
     document.getElementById("copyAnswerCode").addEventListener("click", () => copyFieldValue("webrtcAnswer", "Answer Code"));
