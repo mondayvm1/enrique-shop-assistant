@@ -1345,6 +1345,29 @@ Customer approval required before additional work</div>
           </div>
 
           <div class="card">
+            <h2>Broadcast To Mac</h2>
+            <p class="muted">Use this when the phone camera needs to show up on the Mac. Phone creates an offer, Mac creates an answer, then the Mac sees the stream.</p>
+            <video id="remoteStreamVideo" class="live-video" autoplay playsinline muted></video>
+            <div class="actions">
+              <button class="primary" id="createPhoneOffer">Phone: Create Stream Offer</button>
+              <button id="createMacAnswer">Mac: Create Viewer Answer</button>
+              <button id="connectPhoneAnswer">Phone: Connect Answer</button>
+              <button id="stopBroadcast">Stop Broadcast</button>
+            </div>
+            <div style="margin-top:12px">
+              <label for="webrtcOffer">Offer Code</label>
+              <textarea id="webrtcOffer" placeholder="Phone creates this. Copy it to the Mac."></textarea>
+            </div>
+            <div style="margin-top:12px">
+              <label for="webrtcAnswer">Answer Code</label>
+              <textarea id="webrtcAnswer" placeholder="Mac creates this. Copy it back to the phone."></textarea>
+            </div>
+            <div class="draft-status" id="broadcastStatus">This is manual WebRTC pairing. A later backend can make this one-click.</div>
+          </div>
+        </div>
+
+        <div class="grid cols-2" style="margin-top:16px">
+          <div class="card">
             <h2>Security Camera Stream</h2>
             <p class="muted">Paste a browser-friendly camera URL here. RTSP security cameras need a backend bridge before the browser can show them.</p>
             <div>
@@ -1357,9 +1380,8 @@ Customer approval required before additional work</div>
             </div>
             <iframe id="streamTabFrame" class="stream-frame" title="Live stream preview" style="margin-top:12px" srcdoc="<body style='margin:0;background:#11191c;color:white;font-family:sans-serif;display:grid;place-items:center;height:100vh;text-align:center;padding:20px'>Paste a stream URL, then click Preview Stream</body>"></iframe>
           </div>
-        </div>
 
-        <div class="card" style="margin-top:16px">
+          <div class="card">
           <h2>What Works Where</h2>
           <table>
             <thead>
@@ -1372,6 +1394,7 @@ Customer approval required before additional work</div>
               <tr><td>RTSP/ONVIF security camera</td><td>Needs backend bridge</td><td>RTSP cannot go straight into a normal browser page.</td></tr>
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 
@@ -1547,6 +1570,8 @@ Customer approval required before additional work</div>
     let currentShopPhotoData = "";
     let liveCameraStream = null;
     let streamTabMedia = null;
+    let broadcastPeer = null;
+    const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
     function showSection(id) {
       document.querySelectorAll(".section").forEach((section) => {
@@ -2038,6 +2063,100 @@ Customer approval required before additional work</div>
       reader.readAsDataURL(file);
     }
 
+    function waitForIceGathering(peer) {
+      if (peer.iceGatheringState === "complete") return Promise.resolve();
+      return new Promise((resolve) => {
+        const done = () => {
+          if (peer.iceGatheringState === "complete") {
+            peer.removeEventListener("icegatheringstatechange", done);
+            resolve();
+          }
+        };
+        peer.addEventListener("icegatheringstatechange", done);
+        setTimeout(resolve, 2500);
+      });
+    }
+
+    function resetBroadcastPeer() {
+      if (broadcastPeer) {
+        broadcastPeer.close();
+        broadcastPeer = null;
+      }
+    }
+
+    async function createPhoneOffer() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setText("broadcastStatus", "Camera API is not available. Open the HTTPS hosted app in Safari/Chrome on the phone.");
+        return;
+      }
+      try {
+        resetBroadcastPeer();
+        setText("broadcastStatus", "Phone is requesting camera permission...");
+        streamTabMedia = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        const localVideo = document.getElementById("liveCameraStreamTab");
+        localVideo.srcObject = streamTabMedia;
+        await localVideo.play();
+
+        broadcastPeer = new RTCPeerConnection(rtcConfig);
+        streamTabMedia.getTracks().forEach((track) => broadcastPeer.addTrack(track, streamTabMedia));
+        const offer = await broadcastPeer.createOffer();
+        await broadcastPeer.setLocalDescription(offer);
+        await waitForIceGathering(broadcastPeer);
+        document.getElementById("webrtcOffer").value = JSON.stringify(broadcastPeer.localDescription);
+        setText("broadcastStatus", "Offer ready. Copy this Offer Code to the Mac, then tap Mac: Create Viewer Answer on the Mac.");
+      } catch (error) {
+        const reason = error && error.name ? error.name : "Broadcast failed";
+        setText("broadcastStatus", `${reason}: camera or WebRTC was blocked. Use HTTPS Safari/Chrome and allow camera permission.`);
+      }
+    }
+
+    async function createMacAnswer() {
+      const offerText = document.getElementById("webrtcOffer").value.trim();
+      if (!offerText) {
+        setText("broadcastStatus", "Paste the phone Offer Code into this box first.");
+        return;
+      }
+      try {
+        resetBroadcastPeer();
+        broadcastPeer = new RTCPeerConnection(rtcConfig);
+        broadcastPeer.addEventListener("track", (event) => {
+          document.getElementById("remoteStreamVideo").srcObject = event.streams[0];
+        });
+        await broadcastPeer.setRemoteDescription(JSON.parse(offerText));
+        const answer = await broadcastPeer.createAnswer();
+        await broadcastPeer.setLocalDescription(answer);
+        await waitForIceGathering(broadcastPeer);
+        document.getElementById("webrtcAnswer").value = JSON.stringify(broadcastPeer.localDescription);
+        setText("broadcastStatus", "Answer ready. Copy this Answer Code back to the phone, then tap Phone: Connect Answer on the phone.");
+      } catch {
+        setText("broadcastStatus", "Could not create viewer answer. Make sure the full Offer Code was pasted.");
+      }
+    }
+
+    async function connectPhoneAnswer() {
+      const answerText = document.getElementById("webrtcAnswer").value.trim();
+      if (!broadcastPeer || !answerText) {
+        setText("broadcastStatus", "Phone needs an active offer and the Mac Answer Code pasted here.");
+        return;
+      }
+      try {
+        await broadcastPeer.setRemoteDescription(JSON.parse(answerText));
+        setText("broadcastStatus", "Phone connected. The Mac should now see the live phone camera in Broadcast To Mac.");
+      } catch {
+        setText("broadcastStatus", "Could not connect answer. Make sure the full Answer Code was pasted back onto the phone.");
+      }
+    }
+
+    function stopBroadcast() {
+      resetBroadcastPeer();
+      stopStreamTabCamera();
+      document.getElementById("remoteStreamVideo").srcObject = null;
+      setText("broadcastStatus", "Broadcast stopped.");
+    }
+
     function draftMessage() {
       const customer = document.getElementById("customerName").value.trim() || "there";
       const vehicle = document.getElementById("vehicleName").value.trim() || "your vehicle";
@@ -2185,6 +2304,10 @@ Customer approval required before additional work</div>
     document.getElementById("stopStreamTab").addEventListener("click", stopStreamTabCamera);
     document.getElementById("previewStreamTab").addEventListener("click", previewStreamTab);
     document.getElementById("streamFallbackPhoto").addEventListener("change", handleStreamFallbackPhoto);
+    document.getElementById("createPhoneOffer").addEventListener("click", createPhoneOffer);
+    document.getElementById("createMacAnswer").addEventListener("click", createMacAnswer);
+    document.getElementById("connectPhoneAnswer").addEventListener("click", connectPhoneAnswer);
+    document.getElementById("stopBroadcast").addEventListener("click", stopBroadcast);
     document.getElementById("saveStreamUrl").addEventListener("click", () => {
       document.getElementById("cameraUrl").value = document.getElementById("streamUrl").value;
       localStorage.setItem(cameraConfigKey, JSON.stringify(cameraConfigData()));
