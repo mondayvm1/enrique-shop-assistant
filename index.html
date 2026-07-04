@@ -667,6 +667,27 @@
       margin: 0 0 8px;
     }
 
+    .qr-panel {
+      display: grid;
+      grid-template-columns: 154px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      padding: 12px;
+    }
+
+    .qr-panel img {
+      width: 154px;
+      height: 154px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 6px;
+    }
+
     @media (max-width: 1020px) {
       .app { grid-template-columns: 1fr; }
       aside {
@@ -1127,6 +1148,13 @@ Customer approval required before additional work</div>
             <div class="link-box" style="margin-top:12px">
               <strong id="phoneAccessUrl">http://192.168.1.248:8026/enrique_shop_model.html</strong>
               <button id="copyPhoneUrl">Copy</button>
+            </div>
+            <div class="qr-panel">
+              <img id="phoneQrCode" alt="QR code for phone access" src="">
+              <div>
+                <strong>Scan To Open</strong>
+                <p class="muted" style="margin:6px 0 0">Scan this with your phone camera to open Enrique without typing the address.</p>
+              </div>
             </div>
             <div class="insight-list">
               <div class="insight"><strong>Best current path</strong><span>Open the link on your phone, go to Phone Camera, then use Take Photo / Upload.</span></div>
@@ -1594,6 +1622,10 @@ Customer approval required before additional work</div>
       if (!element) return;
       if (location.protocol.startsWith("http")) {
         element.textContent = `${location.protocol}//${location.host}${location.pathname}`;
+      }
+      const qr = document.getElementById("phoneQrCode");
+      if (qr) {
+        qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(element.textContent)}`;
       }
     }
 
