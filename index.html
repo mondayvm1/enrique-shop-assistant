@@ -1233,6 +1233,7 @@ Customer approval required before additional work</div>
               <textarea id="cameraUrl" placeholder="RTSP/ONVIF cameras usually need a backend bridge. Example: rtsp://user:pass@camera-ip:554/stream1"></textarea>
             </div>
             <div class="actions">
+              <button id="loadSolarPortCamera">Load Solar Port Camera</button>
               <button class="primary" id="saveCameraConfig">Save Camera Setup</button>
               <button id="loadCameraConfig">Load</button>
               <button class="teal" id="previewStream">Preview Stream</button>
@@ -1782,6 +1783,29 @@ Customer approval required before additional work</div>
       document.getElementById("cameraMode").value = data.mode || "Phone upload";
       document.getElementById("cameraName").value = data.name || "";
       document.getElementById("cameraUrl").value = data.url || "";
+    }
+
+    function loadSolarPortCamera() {
+      const notes = [
+        "solar port camera",
+        "Maker/model clue: likely Zumimall/CloudEdge-style B411B battery solar camera",
+        "IP: 192.168.1.206",
+        "MAC: 98:a3:16:89:8d:60",
+        "SN: ppsl55553f7150d4429b",
+        "Network: shop",
+        "Location: electrifygarage's home",
+        "Signal: 94%",
+        "Platform: B411B",
+        "Version: 6.1.3.20250718",
+        "Probe result: device responds on LAN, but HTTP :80 and RTSP :554/:8554 were refused; common web/stream ports timed out/refused.",
+        "Status: no browser-friendly local stream found yet. Check the vendor app for RTSP/ONVIF/NVR/local network streaming settings, or use app/cloud viewing until a backend bridge/source URL is available."
+      ].join("\\n");
+      applyCameraConfig({
+        mode: "Security camera",
+        name: "solar port camera",
+        url: notes
+      });
+      setText("cameraStatus", "Solar port camera loaded. No local RTSP/HTTP stream was found from this Mac; notes are saved for Enrique.");
     }
 
     function previewCameraStream() {
@@ -2539,6 +2563,7 @@ Customer approval required before additional work</div>
       }
     });
 
+    document.getElementById("loadSolarPortCamera").addEventListener("click", loadSolarPortCamera);
     document.getElementById("saveCameraConfig").addEventListener("click", () => {
       localStorage.setItem(cameraConfigKey, JSON.stringify(cameraConfigData()));
       setText("cameraStatus", "Camera setup saved in this browser.");

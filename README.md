@@ -177,3 +177,39 @@ Useful backend tools later:
 - Security cameras require a backend bridge.
 - Live phone camera works best from HTTPS.
 
+## Current Shop Camera Notes
+
+Configured camera:
+
+```text
+Device Name: solar port camera
+SN: ppsl55553f7150d4429b
+Location: electrifygarage's home
+Network: shop
+Signal Strength: 94%
+IP Address: 192.168.1.206
+MAC Address: 98:a3:16:89:8d:60
+Timezone: America/New_York
+Device Platform: B411B
+Device Version: 6.1.3.20250718
+```
+
+Local probe result from the Mac:
+
+- Device responded on LAN at `192.168.1.206`.
+- MAC matched `98:a3:16:89:8d:60`.
+- HTTP `:80` refused.
+- RTSP `:554` refused.
+- RTSP alternate `:8554` refused.
+- Common web/stream ports were refused or timed out.
+
+Current conclusion:
+
+This looks like a battery/solar app-first camera. It may not expose a normal local RTSP/ONVIF/browser stream unless the vendor app has a setting for local/NVR/RTSP/ONVIF access.
+
+To get it into Enrique, use one of these paths:
+
+1. Enable RTSP/ONVIF/local streaming in the camera app if available, then paste that stream URL into `Camera Sources`.
+2. Use the vendor app/cloud page if it provides a browser-viewable link.
+3. Use a backend bridge if a stream URL becomes available.
+4. Replace/add one always-on RTSP/ONVIF shop camera for Enrique vision.
