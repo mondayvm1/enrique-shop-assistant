@@ -1369,6 +1369,7 @@ Customer approval required before additional work</div>
             <canvas id="streamSnapshotCanvas" style="display:none"></canvas>
             <div class="actions">
               <button id="snapshotStreamTab">Use Snapshot For Enrique</button>
+              <button class="teal" id="catalogLocalStream">Capture For Catalog</button>
               <button id="stopStreamTab">Stop</button>
             </div>
             <div style="margin-top:12px">
@@ -1413,6 +1414,7 @@ Customer approval required before additional work</div>
               <button class="primary" id="createPhoneOffer">Phone: Create Stream Offer</button>
               <button id="createMacAnswer">Mac: Create Viewer Answer</button>
               <button id="connectPhoneAnswer">Phone: Connect Answer</button>
+              <button class="teal" id="catalogRemoteStream">Capture Broadcast For Catalog</button>
               <button id="stopBroadcast">Stop Broadcast</button>
             </div>
             <div style="margin-top:12px">
@@ -1552,7 +1554,7 @@ Customer approval required before additional work</div>
             </div>
 
             <div class="card">
-              <h2>Saved Photo Log</h2>
+              <h2>Shop Catalog / Photo Log</h2>
               <table>
                 <thead>
                   <tr><th>Item</th><th>Count</th><th>Belongs To</th><th>Actions</th></tr>
@@ -2196,6 +2198,34 @@ Customer approval required before additional work</div>
       setText("photoStatus", "Snapshot pulled from Live Stream. Review and save it.");
     }
 
+    function captureVideoForCatalog(videoId, sourceLabel, statusId) {
+      const video = document.getElementById(videoId);
+      const canvas = document.getElementById("streamSnapshotCanvas");
+      if (!video || !video.videoWidth || !video.videoHeight) {
+        setText(statusId, "No live video frame available yet. Start the stream and wait until video is visible.");
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      currentShopPhotoData = canvas.toDataURL("image/jpeg", 0.9);
+      document.getElementById("shopPhotoPreview").innerHTML = `<img src="${currentShopPhotoData}" alt="Catalog capture">`;
+      document.getElementById("photoEditIndex").value = "";
+      document.getElementById("itemName").value = "Shop observation";
+      document.getElementById("itemCategory").value = "Unsorted";
+      document.getElementById("itemCount").value = "1";
+      document.getElementById("belongsTo").value = "Shop inventory / review";
+      document.getElementById("checkInDate").value = todayInputValue();
+      document.getElementById("storageLocation").value = sourceLabel;
+      document.getElementById("itemNotes").value = `Captured from ${sourceLabel} at ${new Date().toLocaleString()}. Review item/category/count/customer before relying on it.`;
+      analyzePhotoDraft();
+      savePhotoLog();
+      showSection("capture");
+      setText("photoStatus", "Captured from live stream and saved as a shop observation. Review and edit the record.");
+      setText(statusId, "Captured for Enrique catalog.");
+    }
+
     function previewStreamTab() {
       const input = document.getElementById("streamUrl");
       const url = input.value.trim();
@@ -2724,12 +2754,14 @@ Customer approval required before additional work</div>
     document.getElementById("stopCamera").addEventListener("click", stopLiveCamera);
     document.getElementById("startStreamTab").addEventListener("click", startStreamTabCamera);
     document.getElementById("snapshotStreamTab").addEventListener("click", snapshotStreamTabCamera);
+    document.getElementById("catalogLocalStream").addEventListener("click", () => captureVideoForCatalog("liveCameraStreamTab", "Live Device Camera", "streamStatus"));
     document.getElementById("stopStreamTab").addEventListener("click", stopStreamTabCamera);
     document.getElementById("previewStreamTab").addEventListener("click", previewStreamTab);
     document.getElementById("streamFallbackPhoto").addEventListener("change", handleStreamFallbackPhoto);
     document.getElementById("createPhoneOffer").addEventListener("click", createPhoneOffer);
     document.getElementById("createMacAnswer").addEventListener("click", createMacAnswer);
     document.getElementById("connectPhoneAnswer").addEventListener("click", connectPhoneAnswer);
+    document.getElementById("catalogRemoteStream").addEventListener("click", () => captureVideoForCatalog("remoteStreamVideo", "Broadcast To Mac", "broadcastStatus"));
     document.getElementById("stopBroadcast").addEventListener("click", stopBroadcast);
     document.getElementById("createRoomLink").addEventListener("click", createRoomLink);
     document.getElementById("createShareMacLink").addEventListener("click", createAndShareMacLink);
