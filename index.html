@@ -805,17 +805,12 @@
       </div>
 
       <nav aria-label="Model sections">
-        <button class="nav-btn active" data-section="overview">Command Center</button>
-        <button class="nav-btn" data-section="jobs">Jobs & Customers</button>
-        <button class="nav-btn" data-section="invoice">Invoice Builder</button>
-        <button class="nav-btn" data-section="studio">Invoice Studio</button>
+        <button class="nav-btn active" data-section="jobs">Customers & Jobs</button>
+        <button class="nav-btn" data-section="studio">Invoices</button>
         <button class="nav-btn" data-section="devices">Connect Devices</button>
         <button class="nav-btn" data-section="inventory">Inventory</button>
-        <button class="nav-btn" data-section="vision">Vision & Cameras</button>
         <button class="nav-btn" data-section="capture">Phone Camera</button>
         <button class="nav-btn" data-section="stream">Live Stream</button>
-        <button class="nav-btn" data-section="content">Video Content</button>
-        <button class="nav-btn" data-section="roadmap">Build Roadmap</button>
       </nav>
 
       <div class="aside-block">
@@ -827,13 +822,13 @@
     <main>
       <div class="topbar">
         <div>
-          <h1>Shop AI Operating Model</h1>
-          <p class="subhead">A practical dashboard for vision, inventory, invoices, customer updates, project memory, and shop video support.</p>
+          <h1>Enrique Shop Manager</h1>
+          <p class="subhead">Customers, jobs, invoices, inventory, photos, and live shop camera tools in one place.</p>
         </div>
         <div class="status-pill">Prototype ready</div>
       </div>
 
-      <section id="overview" class="section active">
+      <section id="overview" class="section" hidden>
         <div class="grid cols-3">
           <div class="card">
             <h3>Open Jobs</h3>
@@ -905,7 +900,7 @@
         </div>
       </section>
 
-      <section id="jobs" class="section">
+      <section id="jobs" class="section active">
         <div class="grid cols-2">
           <div class="card">
             <h2>Active Job Board</h2>
@@ -956,49 +951,46 @@
         </div>
 
         <div class="card" style="margin-top:16px">
-          <h2>Customer Communication Guardrails</h2>
+          <h2>Saved Customer / Job / Invoice Records</h2>
           <table>
             <thead>
-              <tr><th>Rule</th><th>Why It Matters</th><th>Example</th></tr>
+              <tr><th>Customer</th><th>Job</th><th>Invoice</th><th>Balance</th><th>Actions</th></tr>
             </thead>
-            <tbody>
-              <tr><td>Approval before send</td><td>Keeps the shop in control.</td><td>Draft is reviewed by a person before SMS/email.</td></tr>
-              <tr><td>Plain language</td><td>Customers understand status without technical confusion.</td><td>"Waiting on replacement fitting" instead of vague shop talk.</td></tr>
-              <tr><td>Approval before extra work</td><td>Prevents invoice disputes.</td><td>Customer chooses repair option before parts are installed.</td></tr>
-              <tr><td>Photos attached when useful</td><td>Builds trust and supports the invoice.</td><td>Leak photo, failed connector, before/after repair.</td></tr>
+            <tbody id="invoiceRecordsBody">
+              <tr><td colspan="5">No saved invoices yet. Build one in Invoices, then save it to the customer/job record.</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <section id="invoice" class="section">
+      <section id="invoice" class="section" hidden>
         <div class="grid cols-2">
           <div class="card">
             <h2>Invoice Builder</h2>
             <div class="form-grid">
               <div>
-                <label for="laborHours">Labor Hours</label>
-                <input id="laborHours" type="number" min="0" step=".1" value="4.5">
+                <label for="oldLaborHours">Labor Hours</label>
+                <input id="oldLaborHours" type="number" min="0" step=".1" value="4.5">
               </div>
               <div>
-                <label for="laborRate">Labor Rate</label>
-                <input id="laborRate" type="number" min="0" step="1" value="150">
+                <label for="oldLaborRate">Labor Rate</label>
+                <input id="oldLaborRate" type="number" min="0" step="1" value="150">
               </div>
               <div>
-                <label for="partsTotal">Parts Total</label>
-                <input id="partsTotal" type="number" min="0" step=".01" value="286.40">
+                <label for="oldPartsTotal">Parts Total</label>
+                <input id="oldPartsTotal" type="number" min="0" step=".01" value="286.40">
               </div>
               <div>
-                <label for="shopSupplies">Shop Supplies</label>
-                <input id="shopSupplies" type="number" min="0" step=".01" value="32.50">
+                <label for="oldShopSupplies">Shop Supplies</label>
+                <input id="oldShopSupplies" type="number" min="0" step=".01" value="32.50">
               </div>
               <div>
-                <label for="taxRate">Tax Rate %</label>
-                <input id="taxRate" type="number" min="0" step=".01" value="7">
+                <label for="oldTaxRate">Tax Rate %</label>
+                <input id="oldTaxRate" type="number" min="0" step=".01" value="7">
               </div>
               <div>
-                <label for="deposit">Deposit Paid</label>
-                <input id="deposit" type="number" min="0" step=".01" value="200">
+                <label for="oldDeposit">Deposit Paid</label>
+                <input id="oldDeposit" type="number" min="0" step=".01" value="200">
               </div>
             </div>
             <div class="invoice-total">
@@ -1035,6 +1027,14 @@
           <div class="card">
             <h2>Invoice Studio</h2>
             <div class="form-grid">
+              <div>
+                <label for="invoiceCustomer">Customer</label>
+                <input id="invoiceCustomer" value="Mike R.">
+              </div>
+              <div>
+                <label for="invoiceJob">Job / Vehicle</label>
+                <input id="invoiceJob" value="2018 Tesla Model 3">
+              </div>
               <div>
                 <label for="billingEntity">Billing Entity</label>
                 <select id="billingEntity">
@@ -1075,6 +1075,30 @@
                 <label for="invoiceDue">Due Date</label>
                 <input id="invoiceDue" type="date" value="2026-07-09">
               </div>
+              <div>
+                <label for="laborHours">Labor Hours</label>
+                <input id="laborHours" type="number" min="0" step=".1" value="4.5">
+              </div>
+              <div>
+                <label for="laborRate">Labor Rate</label>
+                <input id="laborRate" type="number" min="0" step="1" value="150">
+              </div>
+              <div>
+                <label for="partsTotal">Parts Total</label>
+                <input id="partsTotal" type="number" min="0" step=".01" value="286.40">
+              </div>
+              <div>
+                <label for="shopSupplies">Shop Supplies</label>
+                <input id="shopSupplies" type="number" min="0" step=".01" value="32.50">
+              </div>
+              <div>
+                <label for="taxRate">Tax Rate %</label>
+                <input id="taxRate" type="number" min="0" step=".01" value="7">
+              </div>
+              <div>
+                <label for="deposit">Deposit Paid</label>
+                <input id="deposit" type="number" min="0" step=".01" value="200">
+              </div>
             </div>
 
             <div style="margin-top:12px">
@@ -1104,6 +1128,7 @@ Customer approval required before additional work</textarea>
 
             <div class="actions">
               <button class="primary" id="saveInvoiceDraft">Save Entity Draft</button>
+              <button class="primary" id="saveInvoiceRecord">Save Invoice Record</button>
               <button id="loadInvoiceDraft">Load Entity</button>
               <button id="resetInvoiceDraft">Reset Entity</button>
               <button class="teal" id="printInvoice">Print / Save PDF</button>
@@ -1584,7 +1609,7 @@ Customer approval required before additional work</div>
         </div>
       </section>
 
-      <section id="roadmap" class="section">
+      <section id="roadmap" class="section" hidden>
         <div class="card">
           <h2>Build Roadmap</h2>
           <table>
@@ -1612,6 +1637,7 @@ Customer approval required before additional work</div>
     const cameraConfigKey = "enriqueCameraConfig";
     const photoLogKey = "enriquePhotoLog";
     const roomIdKey = "enriqueStableRoomId";
+    const invoiceRecordsKey = "enriqueInvoiceRecords";
     let currentLogoData = "";
     let currentShopPhotoData = "";
     let liveCameraStream = null;
@@ -1634,18 +1660,23 @@ Customer approval required before additional work</div>
       return Number(document.getElementById(id).value || 0);
     }
 
-    function updateInvoice() {
+    function invoiceTotals() {
       const labor = numberValue("laborHours") * numberValue("laborRate");
       const parts = numberValue("partsTotal") + numberValue("shopSupplies");
       const tax = (labor + parts) * (numberValue("taxRate") / 100);
       const deposit = numberValue("deposit");
       const balance = labor + parts + tax - deposit;
+      return { labor, parts, tax, deposit, balance };
+    }
 
-      document.getElementById("laborOut").textContent = money.format(labor);
-      document.getElementById("partsOut").textContent = money.format(parts);
-      document.getElementById("taxOut").textContent = money.format(tax);
-      document.getElementById("depositOut").textContent = "-" + money.format(deposit);
-      document.getElementById("balanceOut").textContent = money.format(balance);
+    function updateInvoice() {
+      const { labor, parts, tax, deposit, balance } = invoiceTotals();
+
+      setText("laborOut", money.format(labor));
+      setText("partsOut", money.format(parts));
+      setText("taxOut", money.format(tax));
+      setText("depositOut", "-" + money.format(deposit));
+      setText("balanceOut", money.format(balance));
 
       syncStudioTotals(labor, parts, tax, deposit, balance);
     }
@@ -1704,6 +1735,8 @@ Customer approval required before additional work</div>
 
     function invoiceDraftData() {
       return {
+        customer: document.getElementById("invoiceCustomer").value,
+        job: document.getElementById("invoiceJob").value,
         entitySlot: document.getElementById("billingEntity").value,
         entityName: document.getElementById("billingEntityName").value,
         logo: currentLogoData,
@@ -1730,6 +1763,8 @@ Customer approval required before additional work</div>
 
       currentLogoData = data.logo || "";
       renderLogo(currentLogoData);
+      document.getElementById("invoiceCustomer").value = data.customer || "Mike R.";
+      document.getElementById("invoiceJob").value = data.job || "2018 Tesla Model 3";
       document.getElementById("billingEntityName").value = data.entityName || document.getElementById("billingEntity").selectedOptions[0].textContent;
       document.getElementById("invoiceAccent").value = data.accent || "#1f8a8a";
       document.getElementById("invoiceStyle").value = data.style || "clean";
@@ -1752,6 +1787,66 @@ Customer approval required before additional work</div>
 
     function setDraftStatus(message) {
       setText("draftStatus", message);
+    }
+
+    function loadInvoiceRecords() {
+      try {
+        return JSON.parse(localStorage.getItem(invoiceRecordsKey) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function renderInvoiceRecords() {
+      const body = document.getElementById("invoiceRecordsBody");
+      if (!body) return;
+      const records = loadInvoiceRecords();
+      if (!records.length) {
+        body.innerHTML = '<tr><td colspan="5">No saved invoices yet. Build one in Invoices, then save it to the customer/job record.</td></tr>';
+        return;
+      }
+      body.innerHTML = records.slice().reverse().map((record, reverseIndex) => {
+        const index = records.length - 1 - reverseIndex;
+        return `<tr>
+          <td>${escapeHtml(record.customer || "Unknown")}</td>
+          <td>${escapeHtml(record.job || "")}</td>
+          <td>${escapeHtml(record.number || "")}<br><span class="muted">${escapeHtml(record.entityName || "")}</span></td>
+          <td>${escapeHtml(record.balance || "")}</td>
+          <td><div class="table-actions"><button data-load-invoice="${index}">Load</button><button class="danger" data-delete-invoice="${index}">Delete</button></div></td>
+        </tr>`;
+      }).join("");
+    }
+
+    function saveInvoiceRecord() {
+      const totals = invoiceTotals();
+      const records = loadInvoiceRecords();
+      records.push({
+        savedAt: new Date().toISOString(),
+        customer: document.getElementById("invoiceCustomer").value.trim(),
+        job: document.getElementById("invoiceJob").value.trim(),
+        number: document.getElementById("invoiceNumber").value.trim(),
+        entityName: document.getElementById("billingEntityName").value.trim(),
+        balance: money.format(totals.balance),
+        draft: invoiceDraftData()
+      });
+      localStorage.setItem(invoiceRecordsKey, JSON.stringify(records));
+      renderInvoiceRecords();
+      setDraftStatus("Invoice saved to customer/job records.");
+    }
+
+    function loadInvoiceRecord(index) {
+      const record = loadInvoiceRecords()[index];
+      if (!record) return;
+      applyInvoiceDraft(record.draft);
+      showSection("studio");
+      setDraftStatus("Saved invoice record loaded.");
+    }
+
+    function deleteInvoiceRecord(index) {
+      const records = loadInvoiceRecords();
+      records.splice(index, 1);
+      localStorage.setItem(invoiceRecordsKey, JSON.stringify(records));
+      renderInvoiceRecords();
     }
 
     function selectedBillingDraftKey() {
@@ -2503,7 +2598,7 @@ Customer approval required before additional work</div>
       document.getElementById(id).addEventListener("input", updateInvoice);
     });
 
-    ["invoiceAccent", "invoiceStyle", "billingEntityName", "invoiceNumber", "invoiceDate", "invoiceDue", "shopInfo", "billTo", "invoiceNotes", "invoiceTerms"].forEach((id) => {
+    ["invoiceCustomer", "invoiceJob", "invoiceAccent", "invoiceStyle", "billingEntityName", "invoiceNumber", "invoiceDate", "invoiceDue", "shopInfo", "billTo", "invoiceNotes", "invoiceTerms"].forEach((id) => {
       document.getElementById(id).addEventListener("input", syncInvoiceStudio);
     });
 
@@ -2525,6 +2620,15 @@ Customer approval required before additional work</div>
     document.getElementById("saveInvoiceDraft").addEventListener("click", () => {
       localStorage.setItem(selectedBillingDraftKey(), JSON.stringify(invoiceDraftData()));
       setDraftStatus("Billing entity draft saved in this browser.");
+    });
+
+    document.getElementById("saveInvoiceRecord").addEventListener("click", saveInvoiceRecord);
+
+    document.getElementById("invoiceRecordsBody").addEventListener("click", (event) => {
+      const loadButton = event.target.closest("[data-load-invoice]");
+      const deleteButton = event.target.closest("[data-delete-invoice]");
+      if (loadButton) loadInvoiceRecord(Number(loadButton.dataset.loadInvoice));
+      if (deleteButton) deleteInvoiceRecord(Number(deleteButton.dataset.deleteInvoice));
     });
 
     document.getElementById("loadInvoiceDraft").addEventListener("click", () => {
@@ -2665,6 +2769,7 @@ Customer approval required before additional work</div>
     document.getElementById("checkInDate").value = todayInputValue();
     updateInvoice();
     syncInvoiceStudio();
+    renderInvoiceRecords();
     analyzePhotoDraft();
     renderPhotoLogs();
   </script>
