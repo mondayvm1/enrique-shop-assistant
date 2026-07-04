@@ -1152,8 +1152,19 @@ Customer approval required before additional work</div>
             <div class="qr-panel">
               <img id="phoneQrCode" alt="QR code for phone access" src="">
               <div>
-                <strong>Scan To Open</strong>
-                <p class="muted" style="margin:6px 0 0">Scan this with your phone camera to open Enrique without typing the address.</p>
+                <strong>Same Wi-Fi QR</strong>
+                <p class="muted" style="margin:6px 0 0">Scan this when your phone is on the same Wi-Fi as this Mac.</p>
+              </div>
+            </div>
+            <div class="link-box" style="margin-top:12px">
+              <strong id="hostedAccessUrl">https://mondayvm1.github.io/enrique-shop-assistant/</strong>
+              <button id="copyHostedUrl">Copy</button>
+            </div>
+            <div class="qr-panel">
+              <img id="hostedQrCode" alt="QR code for hosted app access" src="">
+              <div>
+                <strong>Hosted HTTPS QR</strong>
+                <p class="muted" style="margin:6px 0 0">Scan this if the local Wi-Fi link does not load. This is the GitHub Pages version.</p>
               </div>
             </div>
             <div class="insight-list">
@@ -1621,11 +1632,20 @@ Customer approval required before additional work</div>
       const element = document.getElementById("phoneAccessUrl");
       if (!element) return;
       if (location.protocol.startsWith("http")) {
-        element.textContent = `${location.protocol}//${location.host}${location.pathname}`;
+        const host = location.hostname;
+        const localHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+        if (!localHost) {
+          element.textContent = `${location.protocol}//${location.host}${location.pathname}`;
+        }
       }
       const qr = document.getElementById("phoneQrCode");
       if (qr) {
         qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(element.textContent)}`;
+      }
+      const hosted = document.getElementById("hostedAccessUrl");
+      const hostedQr = document.getElementById("hostedQrCode");
+      if (hosted && hostedQr) {
+        hostedQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(hosted.textContent)}`;
       }
     }
 
@@ -1910,6 +1930,17 @@ Customer approval required before additional work</div>
         setTimeout(() => document.getElementById("copyPhoneUrl").textContent = "Copy", 1200);
       } catch {
         document.getElementById("copyPhoneUrl").textContent = "Select";
+      }
+    });
+
+    document.getElementById("copyHostedUrl").addEventListener("click", async () => {
+      const text = document.getElementById("hostedAccessUrl").textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById("copyHostedUrl").textContent = "Copied";
+        setTimeout(() => document.getElementById("copyHostedUrl").textContent = "Copy", 1200);
+      } catch {
+        document.getElementById("copyHostedUrl").textContent = "Select";
       }
     });
 
