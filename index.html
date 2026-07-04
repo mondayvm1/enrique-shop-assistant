@@ -660,6 +660,14 @@
       background: #fff0ee;
     }
 
+    .hosted-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-weight: 800;
+      color: var(--blue);
+      overflow-wrap: anywhere;
+    }
+
     .link-box {
       display: flex;
       align-items: center;
@@ -1347,6 +1355,7 @@ Customer approval required before additional work</div>
           <div class="card">
             <h2>Broadcast To Mac</h2>
             <p class="muted">Use this when the phone camera needs to show up on the Mac. The easiest path is Room ID streaming.</p>
+            <a class="hosted-link" href="https://mondayvm1.github.io/enrique-shop-assistant/" target="_blank" rel="noreferrer">Open the hosted streaming app</a>
             <video id="remoteStreamVideo" class="live-video" autoplay playsinline muted></video>
             <div class="form-grid" style="margin-top:12px">
               <div>
@@ -2297,6 +2306,18 @@ Customer approval required before additional work</div>
         document.getElementById("liveCameraStreamTab").srcObject = streamTabMedia;
         roomPeer = new Peer(roomId, { debug: 1 });
         roomPeer.on("open", () => setRoomStatus(`Phone broadcasting. Share Room ID: ${roomId}`));
+        roomPeer.on("connection", (connection) => {
+          connection.on("data", (message) => {
+            if (message && message.type === "viewer-ready" && message.viewerId) {
+              setRoomStatus(`Mac viewer found. Calling ${message.viewerId}...`);
+              roomCall = roomPeer.call(message.viewerId, streamTabMedia);
+              if (roomCall) {
+                roomCall.on("close", () => setRoomStatus("Mac viewer disconnected."));
+                roomCall.on("error", () => setRoomStatus("Call to Mac viewer failed."));
+              }
+            }
+          });
+        });
         roomPeer.on("call", (call) => {
           roomCall = call;
           call.answer(streamTabMedia);
@@ -2324,17 +2345,50 @@ Customer approval required before additional work</div>
         return;
       }
       stopRoomPeer();
-      setRoomStatus("Mac connecting to phone room...");
+      setRoomStatus(`Mac joining room ${roomId}...`);
+      let joined = false;
       roomPeer = new Peer(undefined, { debug: 1 });
-      roomPeer.on("open", () => {
-        roomCall = roomPeer.call(roomId, new MediaStream());
-        roomCall.on("stream", (remoteStream) => {
+      const joinTimer = setTimeout(() => {
+        if (!joined) setRoomStatus("Still waiting. Make sure the phone says 'Phone broadcasting' and both devices are on the hosted HTTPS app.");
+      }, 8000);
+      roomPeer.on("open", (viewerId) => {
+        setRoomStatus(`Mac connected as viewer ${viewerId}. Asking phone for stream...`);
+        roomPeer.on("call", (call) => {
+          roomCall = call;
+          call.answer();
+          call.on("stream", (remoteStream) => {
+            joined = true;
+            clearTimeout(joinTimer);
+            const video = document.getElementById("remoteStreamVideo");
+            video.srcObject = remoteStream;
+            video.play().catch(() => {});
+            setRoomStatus("Connected. Mac is viewing the phone camera.");
+          });
+          call.on("close", () => setRoomStatus("Room call closed."));
+          call.on("error", () => setRoomStatus("Room call failed."));
+        });
+        const connection = roomPeer.connect(roomId, { reliable: true });
+        connection.on("open", () => {
+          connection.send({ type: "viewer-ready", viewerId });
+          setRoomStatus("Mac joined room. Waiting for phone stream...");
+        });
+        connection.on("error", () => setRoomStatus("Could not connect to phone room. Check the Room ID and start broadcast on phone."));
+        connection.on("close", () => {
+          if (!joined) setRoomStatus("Room connection closed before video arrived.");
+        });
+      });
+      roomPeer.on("call", (call) => {
+        roomCall = call;
+        call.answer();
+        call.on("stream", (remoteStream) => {
+          joined = true;
+          clearTimeout(joinTimer);
           document.getElementById("remoteStreamVideo").srcObject = remoteStream;
           setRoomStatus("Connected. Mac is viewing the phone camera.");
         });
-        roomCall.on("close", () => setRoomStatus("Room call closed."));
       });
       roomPeer.on("error", (error) => {
+        clearTimeout(joinTimer);
         setRoomStatus(`Room error: ${error.type || error.message || "connection failed"}`);
         updateRoomDiagnostics();
       });
