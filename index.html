@@ -1373,6 +1373,7 @@ Customer approval required before additional work</div>
             </div>
             <div class="actions">
               <button class="primary" id="createRoomLink">Phone: Create Room Link</button>
+              <button class="primary" id="createShareMacLink">Phone: Create & Share Mac Link</button>
               <button class="primary" id="startRoomBroadcast">Phone: Start Room Broadcast</button>
               <button id="joinRoomBroadcast">Mac: Join Room</button>
               <button id="copyRoomId">Copy Room ID</button>
@@ -2225,18 +2226,24 @@ Customer approval required before additional work</div>
       return created;
     }
 
+    function viewerLinkForRoom(roomId, autoJoin = true) {
+      const params = new URLSearchParams({ room: roomId });
+      if (autoJoin) params.set("join", "1");
+      return `${appBaseUrl()}?${params.toString()}#stream`;
+    }
+
     function setRoomId(roomId) {
       localStorage.setItem(roomIdKey, roomId);
       document.getElementById("streamRoomId").value = roomId;
-      document.getElementById("viewerRoomLink").value = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+      document.getElementById("viewerRoomLink").value = viewerLinkForRoom(roomId, true);
     }
 
     function createRoomLink(forceNew = false) {
       const roomId = forceNew ? makeRoomId() : (document.getElementById("streamRoomId").value.trim() || savedRoomId());
-      const link = `${appBaseUrl()}?room=${encodeURIComponent(roomId)}#stream`;
+      const link = viewerLinkForRoom(roomId, true);
       setRoomId(roomId);
       document.getElementById("viewerRoomLink").value = link;
-      setRoomStatus(`Room link ready. Send it to the Mac, then tap Phone: Start Room Broadcast.`);
+      setRoomStatus(`Mac auto-join link ready. Share it to the Mac, then tap Phone: Start Room Broadcast.`);
       updateRoomDiagnostics();
       return { roomId, link };
     }
@@ -2247,7 +2254,11 @@ Customer approval required before additional work</div>
       if (roomId) {
         setRoomId(roomId);
         showSection("stream");
-        setRoomStatus("Room ID loaded from link. On the Mac, tap Mac: Join Room.");
+        const shouldJoin = params.get("join") === "1";
+        setRoomStatus(shouldJoin ? "Room link loaded. Mac will try to join automatically." : "Room ID loaded from link. On the Mac, tap Mac: Join Room.");
+        if (shouldJoin) {
+          setTimeout(() => joinRoomBroadcast(), 1500);
+        }
       } else {
         setRoomId(savedRoomId());
       }
@@ -2433,6 +2444,12 @@ Customer approval required before additional work</div>
       await copyFieldValue(fieldId, label);
     }
 
+    async function createAndShareMacLink() {
+      createRoomLink(false);
+      await shareFieldValue("viewerRoomLink", "Mac Viewer Link");
+      setRoomStatus("Mac auto-join link shared. Now tap Phone: Start Room Broadcast.");
+    }
+
     function draftMessage() {
       const customer = document.getElementById("customerName").value.trim() || "there";
       const vehicle = document.getElementById("vehicleName").value.trim() || "your vehicle";
@@ -2585,6 +2602,7 @@ Customer approval required before additional work</div>
     document.getElementById("connectPhoneAnswer").addEventListener("click", connectPhoneAnswer);
     document.getElementById("stopBroadcast").addEventListener("click", stopBroadcast);
     document.getElementById("createRoomLink").addEventListener("click", createRoomLink);
+    document.getElementById("createShareMacLink").addEventListener("click", createAndShareMacLink);
     document.getElementById("startRoomBroadcast").addEventListener("click", startRoomBroadcast);
     document.getElementById("joinRoomBroadcast").addEventListener("click", joinRoomBroadcast);
     document.getElementById("copyRoomId").addEventListener("click", () => copyFieldValue("streamRoomId", "Room ID"));
