@@ -618,12 +618,20 @@
 
     .live-video {
       width: 100%;
+      min-height: 220px;
       max-height: 360px;
       border-radius: 8px;
       background: #11191c;
       border: 1px solid #223036;
       object-fit: cover;
       display: block;
+    }
+
+    .hero-action {
+      width: 100%;
+      min-height: 56px;
+      font-size: 16px;
+      touch-action: manipulation;
     }
 
     .stream-frame {
@@ -728,6 +736,16 @@
       nav { grid-template-columns: 1fr; }
       .form-grid { grid-template-columns: 1fr; }
       th:nth-child(4), td:nth-child(4) { display: none; }
+      button {
+        min-height: 46px;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+      .live-video {
+        min-height: 180px;
+      }
       .invoice-head {
         display: grid;
       }
@@ -1310,12 +1328,18 @@ Customer approval required before additional work</div>
           <div class="card">
             <h2>Live Device Camera</h2>
             <p class="muted">Open the hosted app on your phone, then use this panel to turn that phone into a live shop camera. On the Mac, this uses the Mac camera.</p>
+            <div class="actions">
+              <button class="primary hero-action" id="startStreamTab">Start Live Camera</button>
+            </div>
             <video id="liveCameraStreamTab" class="live-video" autoplay playsinline muted></video>
             <canvas id="streamSnapshotCanvas" style="display:none"></canvas>
             <div class="actions">
-              <button class="primary" id="startStreamTab">Start Live Camera</button>
               <button id="snapshotStreamTab">Use Snapshot For Enrique</button>
               <button id="stopStreamTab">Stop</button>
+            </div>
+            <div style="margin-top:12px">
+              <label for="streamFallbackPhoto">Fallback: Take Photo / Upload</label>
+              <input id="streamFallbackPhoto" type="file" accept="image/*" capture="environment">
             </div>
             <div class="draft-status" id="streamStatus">For phone camera access, use the HTTPS GitHub link on the phone: https://mondayvm1.github.io/enrique-shop-assistant/</div>
           </div>
@@ -1935,15 +1959,22 @@ Customer approval required before additional work</div>
 
     async function startStreamTabCamera() {
       const video = document.getElementById("liveCameraStreamTab");
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setText("streamStatus", `Camera API is not available here. Current page: ${location.href}. Open the HTTPS hosted link in Safari/Chrome, not the QR preview browser.`);
+        return;
+      }
       try {
+        setText("streamStatus", "Requesting camera permission...");
         streamTabMedia = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } },
           audio: false
         });
         video.srcObject = streamTabMedia;
-        setText("streamStatus", "Live camera is running. Use Snapshot For Enrique to send a frame into the photo intake.");
-      } catch {
-        setText("streamStatus", "Camera was blocked. Open the HTTPS hosted app on the phone, or allow camera permission in the browser.");
+        await video.play();
+        setText("streamStatus", "Live camera is running. The video should appear in the black box.");
+      } catch (error) {
+        const reason = error && error.name ? error.name : "Camera blocked";
+        setText("streamStatus", `${reason}: open the HTTPS hosted link in Safari/Chrome and allow camera permission. If it still blocks, use Fallback Take Photo / Upload.`);
       }
     }
 
@@ -1990,6 +2021,21 @@ Customer approval required before additional work</div>
       frame.removeAttribute("srcdoc");
       frame.src = url;
       setText("streamStatus", "Trying to preview stream. If it is blank, the camera may block embedding.");
+    }
+
+    function handleStreamFallbackPhoto(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        currentShopPhotoData = String(reader.result || "");
+        document.getElementById("shopPhotoPreview").innerHTML = `<img src="${currentShopPhotoData}" alt="Uploaded stream fallback">`;
+        showSection("capture");
+        autoLabelPhoto();
+        setText("photoStatus", "Photo came from the Live Stream fallback. Review and save it.");
+      });
+      reader.readAsDataURL(file);
     }
 
     function draftMessage() {
@@ -2138,6 +2184,7 @@ Customer approval required before additional work</div>
     document.getElementById("snapshotStreamTab").addEventListener("click", snapshotStreamTabCamera);
     document.getElementById("stopStreamTab").addEventListener("click", stopStreamTabCamera);
     document.getElementById("previewStreamTab").addEventListener("click", previewStreamTab);
+    document.getElementById("streamFallbackPhoto").addEventListener("change", handleStreamFallbackPhoto);
     document.getElementById("saveStreamUrl").addEventListener("click", () => {
       document.getElementById("cameraUrl").value = document.getElementById("streamUrl").value;
       localStorage.setItem(cameraConfigKey, JSON.stringify(cameraConfigData()));
